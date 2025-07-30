@@ -1,0 +1,60 @@
+// ✅ Project: BOOK CATALOG API (Node.js + Express + MongoDB)
+
+const express = require('express');
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const app = express();
+
+dotenv.config();
+app.use(express.json());
+
+// ✅ Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => console.log('MongoDB connected'));
+
+// ✅ Book Schema & Model
+const bookSchema = new mongoose.Schema({
+  title: String,
+  author: String,
+  genre: String,
+  publicationYear: Number,
+  available: Boolean,
+});
+const Book = mongoose.model('Book', bookSchema);
+
+// ✅ Routes
+
+// Create Book
+app.post('/api/books', async (req, res) => {
+  const book = new Book(req.body);
+  const saved = await book.save();
+  res.json(saved);
+});
+
+// Get All or Search by Title/Author
+app.get('/api/books', async (req, res) => {
+  const { title, author } = req.query;
+  const query = {};
+  if (title) query.title = new RegExp(title, 'i');
+  if (author) query.author = new RegExp(author, 'i');
+  const books = await Book.find(query);
+  res.json(books);
+});
+
+// Update Book
+app.put('/api/books/:id', async (req, res) => {
+  const updated = await Book.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  res.json(updated);
+});
+
+// Delete Book
+app.delete('/api/books/:id', async (req, res) => {
+  await Book.findByIdAndDelete(req.params.id);
+  res.json({ message: 'Deleted' });
+});
+
+// Start Server
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(BOOK API Server running on port ${PORT}));
