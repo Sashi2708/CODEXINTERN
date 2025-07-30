@@ -1,0 +1,70 @@
+// ✅ Project: TODO BACKEND (Node.js + Express + MongoDB + JWT)
+
+const express = require('express');
+const mongoose = require('mongoose');
+const dotenv = require('dotenv');
+const jwt = require('jsonwebtoken');
+const app = express();
+
+dotenv.config();
+app.use(express.json());
+
+// ✅ Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+}).then(() => console.log('MongoDB connected'));
+
+// ✅ Todo Schema & Model
+const todoSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: String,
+  isCompleted: { type: Boolean, default: false },
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+});
+const Todo = mongoose.model('Todo', todoSchema);
+
+// ✅ JWT Middleware
+function auth(req, res, next) {
+  const token = req.header('Authorization')?.split(' ')[1];
+  if (!token) return res.status(401).json({ message: 'Access denied' });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.userId = decoded.id;
+    next();
+  } catch {
+    res.status(400).json({ message: 'Invalid token' });
+  }
+}
+
+// ✅ Routes
+
+// Create Todo
+app.post('/api/todos', auth, async (req, res) => {
+  const todo = new Todo({ ...req.body, userId: req.userId });
+  const saved = await todo.save();
+  res.json(saved);
+});
+
+// Update Todo
+app.put('/api/todos/:id', auth, async (req, res) => {
+  const updated = await Todo.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  res.json(updated);
+});
+
+// Delete Todo
+app.delete('/api/todos/:id', auth, async (req, res) => {
+  await Todo.findByIdAndDelete(req.params.id);
+  res.json({ message: 'Deleted successfully' });
+});
+
+// Mark as Completed
+app.put('/api/todos/:id/mark', auth, async (req, res) => {
+  const updated = await Todo.findByIdAndUpdate(req.params.id, { isCompleted: true }, { new: true });
+  res.json(updated);
+});
+
+// Start Server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(TODO Server running on port ${PORT}));
